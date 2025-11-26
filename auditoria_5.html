@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoria de Produto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Configuração de Fonte e Estilos Base */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f8f8;
+        }
+
+        .container {
+            width: 98%;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+        }
+
+        /* Estilo da Tabela */
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+
+        .audit-table th, .audit-table td {
+            border: 1px solid #e0e0e0;
+            padding: 12px 8px;
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.95rem;
+        }
+
+        .audit-table th {
+            background-color: #007bff;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .section-header th {
+            background-color: #4a5568 !important;
+            color: white !important;
+            font-size: 1.1rem;
+        }
+        
+        /* Estilo para a caixa de seleção de conformidade na tabela */
+        .conformity-select {
+            width: 150px; 
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+
+        /* Estilo para o textarea (Observação) no desktop */
+        .audit-table textarea {
+            /* Deixa a altura ser definida por rows="2" no HTML */
+            resize: vertical; 
+            overflow: auto; /* Garante barra de rolagem se o conteúdo exceder 2 linhas */
+        }
+
+        /* Estilo para o botão de Salvar PDF */
+        .save-pdf-button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        /* Estilo das Previews de Imagem - MOLDURA REMOVIDA */
+        .image-preview-container {
+            height: 150px; /* Altura fixa para manter o alinhamento */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border: none; 
+            border-radius: 0; 
+            margin-top: 0px; 
+            background-color: #ffffff; 
+        }
+        
+        .image-preview-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; 
+            border-radius: 4px;
+        }
+        
+        /* Estilo para o botão de exclusão da imagem (para garantir visibilidade) */
+        .delete-image-button {
+            background-color: white;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            line-height: 1; 
+        }
+        
+        /* Estilo para a numeração dentro da célula de descrição */
+        .item-description {
+            display: flex;
+            gap: 12px; 
+            align-items: flex-start;
+        }
+
+        .item-description .number {
+            font-weight: bold;
+            color: #1f2937; 
+            flex-shrink: 0; 
+        }
+
+        /* Responsividade da Tabela - Empilhamento em telas pequenas */
+        @media (max-width: 768px) {
+            /* Transforma a tabela em blocos */
+            .audit-table, .audit-table thead, .audit-table tbody, .audit-table th, .audit-table td, .audit-table tr { 
+                display: block; 
+            }
+            
+            /* Oculta o cabeçalho da tabela original */
+            .audit-table thead {
+                display: none;
+            }
+
+            .audit-table tr {
+                margin-bottom: 15px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+
+            .audit-table td {
+                border: none;
+                border-bottom: 1px solid #f0f0f0;
+                position: relative;
+                padding-left: 50%; 
+                text-align: right;
+            }
+            
+            /* Remove o rótulo "Descrição" e ajusta o padding */
+            .audit-table td[data-label="Descrição"]::before {
+                content: none; 
+            }
+            
+            /* Alinha o conteúdo da descrição à esquerda e remove o padding extra */
+            .audit-table td[data-label="Descrição"] {
+                text-align: left;
+                padding-left: 12px; 
+                padding-right: 12px;
+            }
+            
+            .audit-table .section-header th {
+                display: block;
+                text-align: center !important;
+                padding: 10px;
+                margin: 0;
+                border: none;
+            }
+
+            /* Aplica o rótulo para as colunas Status e Observação */
+            .audit-table td:not([data-label="Descrição"])::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                font-weight: bold;
+                text-align: left;
+                color: #4a5568;
+            }
+            
+            /* Garante que os campos de input, select e o NOVO textarea preencham a tela */
+            .audit-table input[type="text"], .audit-table select, .audit-table input[type="date"], .audit-table textarea {
+                width: 100% !important;
+                padding-right: 0 !important;
+                text-align: left !important;
+            }
+            .audit-table td[data-label="Observação"] {
+                padding-right: 6px;
+            }
+        }
+
+        /* Estilos de Impressão (para o PDF) - OTIMIZADOS PARA MÁXIMO DE 3 PÁGINAS */
+        @media print {
+            
+            /* OTIMIZAÇÃO: Reduzir margens e espaçamentos gerais */
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0 10px; 
+            }
+            .mb-6 { margin-bottom: 0.5rem !important; } 
+            .mb-8 { margin-bottom: 0.5rem !important; }
+            .mt-8 { margin-top: 0.5rem !important; }
+            .my-8 { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
+            .data-fields {
+                gap: 0.5rem !important;
+            }
+            .data-fields label {
+                font-size: 0.8rem !important;
+            }
+            .data-fields input, .data-fields select {
+                padding: 0.1rem !important;
+            }
+            
+            /* Oculta os botões na impressão */
+            .save-pdf-button { 
+                display: none !important;
+            }
+            
+            /* Oculta o rótulo "Selecione todas as imagens..." no PDF */
+            label[for="multi-image-upload"] {
+                display: none !important;
+            }
+
+            /* OCULTA O TÍTULO ORIGINAL E INSERE O NOVO */
+            .image-upload-section h2 {
+                /* Oculta o conteúdo original */
+                visibility: hidden;
+                position: relative;
+                height: 30px; 
+            }
+
+            .image-upload-section h2::after {
+                /* Insere o novo conteúdo "Fotos" */
+                content: "Fotos"; 
+                visibility: visible;
+                position: absolute;
+                top: 0;
+                left: 0;
+                font-size: 1.5rem; 
+                font-weight: bold;
+                color: #1f2937;
+            }
+            
+            /* Oculta o input de seleção múltipla e o botão de exclusão na impressão */
+            #multi-image-upload, .delete-image-button {
+                display: none !important;
+            }
+            
+            body {
+                background-color: #fff;
+            }
+            
+            /* Oculta campos de imagem vazios no PDF */
+            .image-field.hide-for-print {
+                display: none !important;
+            }
+
+            /* Força a tabela a aparecer em modo desktop no PDF */
+            .audit-table, .audit-table thead, .audit-table tbody, .audit-table th, .audit-table td, .audit-table tr { 
+                display: revert; 
+            }
+            .audit-table td::before {
+                content: none;
+            }
+            
+            /* OTIMIZAÇÃO: Compactar a tabela verticalmente */
+            .audit-table th, .audit-table td {
+                display: table-cell;
+                border: 1px solid #ccc; /* Mantém a borda da célula */
+                padding: 6px 4px; 
+                font-size: 0.8rem; 
+            }
+            
+            /* OTIMIZAÇÃO: Compactar campos de texto/seleção dentro da tabela */
+            .audit-table td input[type="text"], .audit-table input[type="date"], .audit-table textarea, .conformity-select {
+                border: none;
+                padding: 0;
+                margin: 0;
+                font-size: 0.8rem; 
+                resize: none; 
+                width: 100% !important; 
+                appearance: none; 
+                min-height: 20px; 
+            }
+            
+            /* Estilos das imagens no PDF - REMOÇÃO DE MOLDURA/BORDA */
+            .image-field {
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background-color: transparent !important;
+            }
+            
+            .image-preview-container {
+                border: none !important;
+                height: auto;
+                background-color: #fff;
+                padding: 0 !important; 
+                border: none !important;
+                box-shadow: none !important;
+                background-color: transparent !important;
+            }
+
+            .image-preview-container img {
+                max-width: 100%; 
+                max-height: 150px; 
+                margin: 2px;
+            }
+            .image-field {
+                break-inside: avoid;
+            }
+            
+            /* Oculta o texto "Sem Imagem" no PDF */
+            .image-preview-container > span {
+                display: none !important;
+            }
+            
+            /* OTIMIZAÇÃO: Força o grid interno a usar 4 colunas e reduz o espaçamento */
+            .image-upload-section > #image-preview-grid {
+                display: grid; 
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important; 
+                gap: 0.5rem; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="mb-6 pb-4 border-b-2 border-gray-200 text-center">
+        <h1 id="main-title" class="text-2xl md:text-3xl font-extrabold text-gray-800 m-0 leading-tight">Auditoria de Produto</h1>
+    </div>
+
+    <div class="data-fields grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+        
+        <div class="data-field col-span-1 md:col-span-3"> 
+            <label for="data" class="block text-sm font-semibold text-gray-700">Data da Auditoria:</label>
+            <input type="date" id="data" name="data" value="" class="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        
+        <div class="data-field col-span-1 md:col-span-2">
+            <label for="responsavel" class="block text-sm font-semibold text-gray-700">Responsável:</label>
+            <input type="text" id="responsavel" name="responsavel" class="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+        </div>
+    </div>
+
+    <div class="data-fields grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        
+        <div class="data-field col-span-2 md:col-span-2"> <label for="produto" class="block text-sm font-semibold text-gray-700">Produto:</label>
+            <select id="produto" name="produto" class="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+<option value="" disabled selected>Selecione um produto</option>
+<option value="01.17.0004 - Alumínio em Pó Atomizado (T2) ET.004">01.17.0004 - Alumínio em Pó Atomizado (T2) ET.004</option>
+<option value="01.17.0006 - Alumínio de Lata Atomizado (T3) ET.008">01.17.0006 - Alumínio de Lata Atomizado (T3) ET.008</option>
+<option value='' 01.17.0300 - ALUMINIO DE LATA ATOMIZADO - F2 - ET.008''> 01.17.0300 - ALUMINIO DE LATA ATOMIZADO - F2 - ET.008</option>
+<option value='' 01.17.0002 - ALUMINIO EM PO #100 - ET001''> 01.17.0002 - ALUMINIO EM PO #100 - ET001</option>
+<option value='' 01.17.0061 - ALUMÍNIO EM PÓ 98,5% - ET.198''> 01.17.0061 - ALUMÍNIO EM PÓ 98,5% - ET.198</option>
+<option value='' 01.17.0004 - ALUMINIO EM PÓ ATOMIZADO - ET.004''> 01.17.0004 - ALUMINIO EM PÓ ATOMIZADO - ET.004</option>
+<option value='' 02.40.0001 - FERRO NIÓBIO - ET.167 - MO''> 02.40.0001 - FERRO NIÓBIO - ET.167 - MO</option>
+<option value='' 01.17.0203 - LIGA DE ALUMÍNIO 97,5% - ET.228''> 01.17.0203 - LIGA DE ALUMÍNIO 97,5% - ET.228</option>
+<option value='' 01.17.0206 - LIGA DE ALUMÍNIO SAE 306  - ET.236''> 01.17.0206 - LIGA DE ALUMÍNIO SAE 306  - ET.236</option>
+<option value='' 02.30.0107 - LINGOTE DE BORRA  DE ALUMÍNIO - FAB1 - ET.258 - MO''> 02.30.0107 - LINGOTE DE BORRA  DE ALUMÍNIO - FAB1 - ET.258 - MO</option>
+<option value='' 01.17.0068 - PÓ DE ALUMÍNIO ATOMEX 200 - ET.243''> 01.17.0068 - PÓ DE ALUMÍNIO ATOMEX 200 - ET.243</option>
+<option value='' 01.17.0041 - PÓ DE ALUMÍNIO ATOMEX 250 - 98,0% - ET.154''> 01.17.0041 - PÓ DE ALUMÍNIO ATOMEX 250 - 98,0% - ET.154</option>
+<option value='' 01.17.0057 - PÓ DE ALUMÍNIO ATOMEX 250 R SG - ET.191''> 01.17.0057 - PÓ DE ALUMÍNIO ATOMEX 250 R SG - ET.191</option>
+<option value='' 01.17.0021 - PÓ DE ALUMÍNIO ATOMEX 250 R SG - ET.38''> 01.17.0021 - PÓ DE ALUMÍNIO ATOMEX 250 R SG - ET.38</option>
+<option value='' 01.17.0401 - PÓ DE ALUMÍNIO ATOMEX 300 R SG - ET.242''> 01.17.0401 - PÓ DE ALUMÍNIO ATOMEX 300 R SG - ET.242</option>
+<option value='' 01.17.0403 - PÓ DE ALUMÍNIO ATOMEX 300 R SG 96,5% - ET.248''> 01.17.0403 - PÓ DE ALUMÍNIO ATOMEX 300 R SG 96,5% - ET.248</option>
+<option value='' 01.17.0058 - PÓ DE ALUMÍNIO ATOMEX 325 HG - ET.192''> 01.17.0058 - PÓ DE ALUMÍNIO ATOMEX 325 HG - ET.192</option>
+<option value='' 01.17.0022 - PÓ DE ALUMÍNIO ATOMEX 325 HG - ET.39''> 01.17.0022 - PÓ DE ALUMÍNIO ATOMEX 325 HG - ET.39</option>
+<option value='' 01.17.0039 - PÓ DE ALUMÍNIO ATOMEX 325 R 99,0% - ET.150''> 01.17.0039 - PÓ DE ALUMÍNIO ATOMEX 325 R 99,0% - ET.150</option>
+<option value='' 01.17.0064 - PÓ DE ALUMÍNIO ATOMEX 325 R HG - ET.204''> 01.17.0064 - PÓ DE ALUMÍNIO ATOMEX 325 R HG - ET.204</option>
+<option value='' 01.17.0065 - PÓ DE ALUMÍNIO ATOMEX 325 R HG - ET.232''> 01.17.0065 - PÓ DE ALUMÍNIO ATOMEX 325 R HG - ET.232</option>
+<option value='' 01.25.0001 - TARUGO DE ALUMÍNIO''> 01.25.0001 - TARUGO DE ALUMÍNIO</option>
+<option value='' 02.50.0001 - TARUGO DE ALUMÍNIO DE 4" - 3M - SAE 6060 - ET.208 - MO''> 02.50.0001 - TARUGO DE ALUMÍNIO DE 4" - 3M - SAE 6060 - ET.208 - MO</option>
+<option value='' 02.50.0005 - TARUGO DE ALUMÍNIO DE 4" - 6M - SAE 6060 - ET.214 - MO''> 02.50.0005 - TARUGO DE ALUMÍNIO DE 4" - 6M - SAE 6060 - ET.214 - MO</option>
+<option value='' 02.50.0022 - TARUGO DE ALUMÍNIO DE 4" - 6M - SAE 6061 - ET.250 - MO''> 02.50.0022 - TARUGO DE ALUMÍNIO DE 4" - 6M - SAE 6061 - ET.250 - MO</option>
+<option value='' 02.50.0003 - TARUGO DE ALUMÍNIO DE 5" - 3M - SAE 6060 - ET.210 - MO''> 02.50.0003 - TARUGO DE ALUMÍNIO DE 5" - 3M - SAE 6060 - ET.210 - MO</option>
+<option value='' 02.50.0013 - TARUGO DE ALUMÍNIO DE 5" - 3M - SAE 6061 - ET.226 - MO''> 02.50.0013 - TARUGO DE ALUMÍNIO DE 5" - 3M - SAE 6061 - ET.226 - MO</option>
+<option value='' 02.50.0007 - TARUGO DE ALUMÍNIO DE 5" - 6M - SAE 6060 - ET.216 - MO''> 02.50.0007 - TARUGO DE ALUMÍNIO DE 5" - 6M - SAE 6060 - ET.216 - MO</option>
+<option value='' 02.50.0008 - TARUGO DE ALUMÍNIO DE 5" - 6M - SAE 6063 - ET.217 - MO''> 02.50.0008 - TARUGO DE ALUMÍNIO DE 5" - 6M - SAE 6063 - ET.217 - MO</option>
+<option value='' 02.50.0024 - TARUGO DE ALUMÍNIO DE 7" - 6M - SAE 6060 - ET.252 - MO''> 02.50.0024 - TARUGO DE ALUMÍNIO DE 7" - 6M - SAE 6060 - ET.252 - MO</option>
+<option value='' 02.50.0029 - TARUGO DE ALUMÍNIO DE 7" - 6M - SAE 6063 - ET.257 - MO''> 02.50.0029 - TARUGO DE ALUMÍNIO DE 7" - 6M - SAE 6063 - ET.257 - MO</option>
+<option value='' 02.50.0027 - TARUGO DE ALUMÍNIO DE 7" - 6M - SAE 6351 - ET.255 - MO''> 02.50.0027 - TARUGO DE ALUMÍNIO DE 7" - 6M - SAE 6351 - ET.255 - MO</option>
+
+
+
+           
+</select>
+        </div>
+        
+        <div class="data-field col-span-1 md:col-span-1"> <label for="peso" class="block text-sm font-semibold text-gray-700">Peso (kg):</label>
+            <input type="text" id="peso" name="peso" inputmode="numeric" class="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        
+        <div class="data-field col-span-1 md:col-span-1"> <label for="cliente" class="block text-sm font-semibold text-gray-700">Cliente:</label>
+            <input type="text" id="cliente" name="cliente" class="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        
+        <div class="data-field col-span-1 md:col-span-1"> <label for="lote" class="block text-sm font-semibold text-gray-700">Lote:</label>
+            <input type="text" id="lote" name="lote" class="w-full mt-1 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" oninput="updateTitle()">
+        </div>
+    </div>
+    <table class="audit-table">
+        <thead>
+            <tr>
+                <th style="width: 55%;" class="bg-gray-700">Descrição</th> 
+                <th style="width: 180px;">Status</th>
+                <th>Observação / Justificativa (C/NC/NA)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="section-header"><th colspan="3">Embalagem</th></tr>
+
+            <tr data-item-id="embalagem-1">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">1.</span>
+                        <span class="text-content">Pallet - Verificar conforme a especificação do cliente</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-embalagem-1" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-embalagem-1" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="embalagem-2">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">2.</span>
+                        <span class="text-content">Tipo de Embalagem - Verificar conforme a especificação do cliente</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-embalagem-2" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-embalagem-2" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+            
+            <tr data-item-id="embalagem-3">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">3.</span>
+                        <span class="text-content">Condições do Big Bag - Verificar a limpeza geral do Big Bag (ausência de resíduos aparentes), sem rasgos, furos ou desfiamentos e firmeza das costuras, garantindo que não apresentem falhas</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-embalagem-3" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-embalagem-3" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="embalagem-4">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">4.</span>
+                        <span class="text-content">Alças dos Big Bags - Verificar se as alças estão bem presas, sem cortes ou desgaste</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-embalagem-4" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-embalagem-4" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="embalagem-5">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">5.</span>
+                        <span class="text-content">Etiqueta (processo) - In loco – carregamento</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-embalagem-5" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-embalagem-5" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="embalagem-6">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">6.</span>
+                        <span class="text-content">Etiqueta (liberação ou expedição) - Verificar se estão devidamente identificados (A etiqueta deve conter o nome do cliente, produto, lote, peso e data da expedição)</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-embalagem-6" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-embalagem-6" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="embalagem-7">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">7.</span>
+                        <span class="text-content">Nº corrida - In loco – carregamento</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-embalagem-7" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-embalagem-7" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr class="section-header"><th colspan="3">Condições do Veículo</th></tr>
+
+            <tr data-item-id="veiculo-8">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">8.</span>
+                        <span class="text-content">Lonamento - Verificar as condições do lonamento do veículo, assegurando que a lona esteja limpa, sem rasgos, furos ou desgastes, devidamente posicionada e fixada de forma adequada sobre o material carregado. Obs: Para lingotes, verificar se há 2 lonas.</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-veiculo-8" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-veiculo-8" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="veiculo-9">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">9.</span>
+                        <span class="text-content">Vedação - A vedação dos produtos estão conformes? Verificar se foi posicionado uma lona plástica embaixo da carga. O assoalho está em boas condições?</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-veiculo-9" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-veiculo-9" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="veiculo-10">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">10.</span>
+                        <span class="text-content">Condições do caminhão - Verificar limpeza, nivelamento e ausência de avarias ou defeitos. Verificar se a carroceria do caminhão está em perfeitas condições para o carregamento.</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-veiculo-10" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-veiculo-10" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+            
+            <tr class="section-header"><th colspan="3">Características físicas produto</th></tr>
+
+            <tr data-item-id="fisico-11">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">11.</span>
+                        <span class="text-content">Aspecto Visual:
+<p><b>Tarugos</b> - Verificar se os tarugos não estão danificados com rebarbas, rachaduras (fundas ou superficial), e furos.</p><p>
+<b>Pó de Alumínio:</b> O material deve estar solto e livre de contaminações superficiais de outros materiais.</p><p><b>Lingotes:</b> Verificar se os lingotes estão resfriados e se estão no peso de 950 a 1050 kg</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-fisico-11" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-fisico-11" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="fisico-12">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">12.</span>
+                        <span class="text-content">Recobrimento do Pó - Se Aplicável - Para pó de alumínio: Realizar teste de recobrimento</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-fisico-12" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-fisico-12" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="fisico-13">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">13.</span>
+                        <span class="text-content">Carregamento - Verificar se o material foi transportado em locais protegidos contra intempéries</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-fisico-13" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-fisico-13" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="fisico-14">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">14.</span>
+                        <span class="text-content">Peso do material - O peso está de acordo com a especificação do cliente?</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-fisico-14" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-fisico-14" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="fisico-15">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">15.</span>
+                        <span class="text-content">Granulometria - A granulometria está de acordo com a especificação do cliente?</span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-fisico-15" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-fisico-15" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+
+            <tr data-item-id="fisico-16">
+                <td data-label="Descrição">
+                    <div class="item-description">
+                        <span class="number">16.</span>
+                        <span class="text-content">Inspeção RX - Realizar inspeção com RX (Fe, Zn e Cu).utilizando √N + 1
+do número de bags.
+<p>Apenas para a CBMM inspecionar 3 pontos (Inicio, meio e fim) do bag.</p></span>
+                    </div>
+                </td>
+                <td data-label="Status">
+                    <select name="status-fisico-16" class="conformity-select">
+                        <option value="">Selecione</option>
+                        <option value="C">C - Conforme</option>
+                        <option value="NC">NC - Não Conforme</option>
+                        <option value="NA">NA - Não Aplicável</option>
+                    </select>
+                </td>
+                <td data-label="Observação"><textarea name="obs-fisico-16" rows="2" placeholder="Detalhes ou justificativa..." class="w-full p-1 border border-gray-200 rounded-md"></textarea></td>
+            </tr>
+            
+        </tbody>
+    </table>
+
+    <div class="data-fields grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+        <div class="data-field">
+            <label class="block text-sm font-semibold text-gray-700">Situação Final da Auditoria:</label>
+            <div class="flex gap-6 mt-1">
+                <label class="flex items-center">
+                    <input type="radio" name="situacao" value="aprovado" class="text-green-500 focus:ring-green-500">
+                    <span class="ml-2 text-green-600 font-medium">Aprovado</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="radio" name="situacao" value="segregado-ra" class="text-red-500 focus:ring-red-500">
+                    <span class="ml-2 text-red-600 font-medium">Segregado RA</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <hr class="my-8 border-gray-300">
+    
+    <div class="image-upload-section">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">📷 Anexar Imagens (Máx. 20)</h2>
+        
+        <label for="multi-image-upload" class="block text-sm font-medium text-gray-700 mb-2">Selecione todas as imagens de uma vez:</label>
+        <input type="file" id="multi-image-upload" multiple accept="image/*" 
+            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer mb-6"
+            onchange="handleMultiImageChange(this.files)">
+            
+        <div id="image-preview-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            </div>
+    </div>
+    
+    <hr class="my-8 border-gray-300">
+
+    <div class="button-section flex justify-center gap-4">
+        <button class="save-pdf-button shadow-lg hover:shadow-xl transform hover:scale-105" onclick="saveAsPDF()">💾 Salvar como PDF</button>
+    </div>
+
+</div>
+
+<script>
+    // --- CONFIGURAÇÕES DE IMAGEM ---
+    const MAX_WIDTH = 1000; 
+    const JPEG_QUALITY = 0.8; 
+    const MAX_IMAGES = 20;
+
+    // Variáveis Globais
+    let selectedFiles = []; 
+
+    /**
+     * Atualiza o título principal com o número do Lote.
+     */
+    function updateTitle() {
+        const lote = document.getElementById('lote').value.trim();
+        const h1 = document.getElementById('main-title');
+        
+        let newTitle = 'Auditoria de Produto';
+        if (lote) {
+            newTitle += ` (Lote: ${lote})`;
+        }
+        h1.textContent = newTitle;
+    }
+
+    // --- FUNÇÕES DE PROCESSAMENTO DE IMAGEM ---
+
+    /**
+     * Redimensiona e comprime uma imagem (File object) usando Canvas.
+     */
+    function resizeImage(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+                    resolve(dataUrl);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /**
+     * Lida com a seleção de MÚLTIPLAS imagens, processa e armazena os Data URLs.
+     */
+    async function handleMultiImageChange(files) {
+        document.getElementById('image-preview-grid').innerHTML = '<div class="col-span-4 text-center text-gray-500 p-8">Processando imagens, aguarde...</div>';
+        
+        selectedFiles = []; 
+        const filesToProcess = Array.from(files).slice(0, MAX_IMAGES);
+        
+        const processingPromises = filesToProcess.map(file => resizeImage(file));
+        const processedDataUrls = await Promise.all(processingPromises);
+
+        selectedFiles = processedDataUrls;
+        
+        renderPreviews();
+        
+        document.getElementById('multi-image-upload').value = '';
+    }
+
+    /**
+     * Função que renderiza os 20 containers de preview.
+     */
+    function renderPreviews() {
+        const previewGrid = document.getElementById('image-preview-grid');
+        previewGrid.innerHTML = ''; 
+
+        for (let i = 0; i < MAX_IMAGES; i++) {
+            const imageField = document.createElement('div');
+            imageField.id = `image-field-${i + 1}`;
+            imageField.className = "image-field"; 
+            
+            if (i < selectedFiles.length) {
+                const dataUrl = selectedFiles[i];
+
+                imageField.classList.add('relative'); 
+                imageField.innerHTML = `
+                    <button onclick="removeImage(${i})" 
+                            class="delete-image-button text-red-600 hover:text-red-800 text-xs font-bold bg-white rounded-full p-1 shadow-md absolute z-10" 
+                            style="width: 20px; height: 20px; top: -5px; right: -5px;">
+                        ✕
+                    </button>
+                    <div id="preview-container-${i + 1}" class="image-preview-container">
+                        </div>
+                `;
+                
+                const container = imageField.querySelector(`#preview-container-${i + 1}`);
+                if (container) {
+                    const img = document.createElement('img');
+                    img.src = dataUrl;
+                    img.alt = `Pré-visualização da Imagem ${i + 1}`;
+                    container.appendChild(img);
+                }
+
+            } else {
+                imageField.innerHTML = `
+                    <div id="preview-container-${i + 1}" class="image-preview-container">
+                        <span class="text-sm text-gray-400">Sem Imagem</span>
+                    </div>
+                `;
+            }
+
+            previewGrid.appendChild(imageField);
+        }
+    }
+
+    /**
+     * Remove uma imagem individualmente do array e regera a galeria.
+     */
+    function removeImage(index) {
+        if (index >= 0 && index < selectedFiles.length) {
+            selectedFiles.splice(index, 1);
+            renderPreviews();
+        }
+    }
+
+    // --- FUNÇÕES DE IMPRESSÃO (PDF) E COMPARTILHAMENTO ---
+
+    /**
+     * Prepara a página e aciona a impressão (simula o PDF), renomeando o arquivo.
+     */
+    function saveAsPDF() {
+        // 1. Lógica para extrair dados para o nome do arquivo (NOMEAÇÃO DO PDF)
+        const produtoSelect = document.getElementById('produto');
+        const produto = produtoSelect.value.trim();
+        const cliente = document.getElementById('cliente').value.trim();
+        const lote = document.getElementById('lote').value.trim();
+
+        let produto_cod = '';
+        if (produto) {
+            produto_cod = produto.split(' ')[0];
+        }
+
+        const dataAuditoria = document.getElementById('data').value.trim();
+        let data_formatada = '';
+        if (dataAuditoria) {
+            data_formatada = dataAuditoria.replace(/-/g, ''); 
+        } else {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            data_formatada = `${yyyy}${mm}${dd}`;
+        }
+        
+        const partes = [
+            'AUDITORIA', 
+            data_formatada, 
+            produto_cod || 'PROD', 
+            cliente || 'CLIENTE', 
+            lote || 'LOTE' 
+        ];
+        
+        const nomeArquivo = partes.join('_').toUpperCase().replace(/\s+/g, '_'); 
+
+        document.title = nomeArquivo;
+
+
+        // 2. Processamento de Justificativas (Textareas) - Oculta campos vazios
+        const textareas = document.querySelectorAll('.audit-table textarea');
+        const emptyTextareas = []; 
+
+        textareas.forEach(textarea => {
+            // Verifica se está vazio
+            if (textarea.value.trim() === '') {
+                // 1. Remove o placeholder para não aparecer no PDF
+                textarea.setAttribute('data-original-placeholder', textarea.placeholder);
+                textarea.removeAttribute('placeholder');
+
+                // 2. Oculta o textarea (display:none é o mais eficaz para esconder o conteúdo)
+                // A célula (TD) manterá seu padding e bordas por causa do CSS @media print
+                textarea.style.display = 'none'; 
+                
+                emptyTextareas.push(textarea);
+            }
+        });
+        
+        // 3. Processamento de Imagens (Oculta containers vazios)
+        const imageFields = document.querySelectorAll('.image-field');
+        const fieldsToHide = [];
+
+        imageFields.forEach((field, index) => {
+            const previewContainer = field.querySelector(`#preview-container-${index + 1}`);
+            
+            if (!previewContainer || !previewContainer.querySelector('img')) {
+                field.classList.add('hide-for-print');
+                fieldsToHide.push(field);
+            } else {
+                field.classList.remove('hide-for-print');
+            }
+        });
+
+        // 4. Define a função de limpeza (cleanup) - Restaura todos os estilos
+        const cleanup = () => {
+            // Limpeza de Imagens
+            fieldsToHide.forEach(field => {
+                field.classList.remove('hide-for-print');
+            });
+            
+            // Limpeza de Textareas (Restaura o estado normal)
+            emptyTextareas.forEach(textarea => {
+                // Restaura o display
+                textarea.style.display = ''; 
+                
+                // Restaura o placeholder
+                const originalPlaceholder = textarea.getAttribute('data-original-placeholder');
+                if (originalPlaceholder) {
+                    textarea.placeholder = originalPlaceholder;
+                    textarea.removeAttribute('data-original-placeholder');
+                }
+            });
+
+            // Restaura o título do documento (para uso no navegador)
+            document.title = "Auditoria de Produto"; 
+            window.removeEventListener('afterprint', cleanup); 
+            
+            // Restaura o título H1 na página
+            updateTitle(); 
+        };
+
+        // 5. Adiciona o listener para limpeza
+        window.addEventListener('afterprint', cleanup);
+        
+        // 6. Inicia a impressão
+        window.print();
+    }
+    
+    // Chama as funções iniciais ao carregar a página
+    window.onload = function() {
+        renderPreviews();
+        updateTitle(); // Chamada inicial para preencher o título
+    };
+</script>
+
+</body>
+</html>
